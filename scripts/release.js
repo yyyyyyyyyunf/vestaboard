@@ -68,9 +68,9 @@ try {
 
 // Ensure the release branch is up to date with origin (if origin/release exists).
 try {
-  runSilent('git fetch origin release');
   const remoteExists = runSilent('git ls-remote --heads origin release').length > 0;
   if (remoteExists) {
+    runSilent('git fetch origin release');
     const local = runSilent('git rev-parse release');
     const remote = runSilent('git rev-parse origin/release');
     if (local !== remote) {
