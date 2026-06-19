@@ -1,6 +1,6 @@
 {
   "name": "@fly4react/vestaboard",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "React split-flap display component inspired by Vestaboard",
   "type": "module",
   "main": "./dist/index.cjs",
