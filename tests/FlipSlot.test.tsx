@@ -4,6 +4,7 @@ import { FlipSlot } from '../src/FlipSlot';
 
 const mockTo = vi.fn(() => ({
   kill: vi.fn(),
+  totalTime: vi.fn(),
 }));
 
 const mockTimeline = vi.fn(() => ({

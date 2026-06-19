@@ -10,6 +10,11 @@ import type { FlipSlotProps } from '../types';
 import styles from './FlipSlot.module.css';
 
 const SEGMENT_DURATION = 1;
+const EPS = 0.0001;
+
+function padCharacters(characters: string): string[] {
+  return [' ', ...Array.from(characters), ' '];
+}
 
 export function FlipSlot({
   value,
@@ -32,6 +37,7 @@ export function FlipSlot({
   const charsRef = useRef<string[]>([]);
   const timelineRef = useRef<gsap.core.Timeline | null>(null);
   const scrubberRef = useRef<gsap.core.Tween | null>(null);
+  const activeScrubRef = useRef<gsap.core.Tween | null>(null);
   const animatingRef = useRef(false);
   const valueRef = useRef(value);
 
@@ -89,23 +95,48 @@ export function FlipSlot({
     });
   }, []);
 
+  const normalizeToIndex = useCallback(
+    (index: number) => {
+      const timeline = timelineRef.current;
+      const scrubber = scrubberRef.current;
+      const chars = charsRef.current;
+      if (!timeline || !scrubber || chars.length === 0) return;
+
+      const time = index * SEGMENT_DURATION + EPS;
+      // Move the scrubber first; because it was built while the timeline was at
+      // time 0, its first render will correctly map scrubber time to timeline
+      // time. Then lock the timeline to the same instant.
+      scrubber.totalTime(time);
+      timeline.totalTime(time);
+      setFaceText(chars[(index + 1) % chars.length], chars[index]);
+    },
+    [setFaceText]
+  );
+
   const flipTo = useCallback(
     (desired: string) => {
       const chars = charsRef.current;
       const timeline = timelineRef.current;
       const scrubber = scrubberRef.current;
-      const container = containerRef.current;
 
-      if (!timeline || !scrubber || !container || chars.length === 0) return;
+      if (!timeline || !scrubber || chars.length === 0) return;
 
       const desiredIndex = characterIndex(desired, chars);
-      const currentIndex = Math.floor(timeline.totalTime() / SEGMENT_DURATION) % chars.length;
-
+      const rawCurrentIndex = Math.round(timeline.totalTime() / SEGMENT_DURATION);
+      const currentIndex = Number.isNaN(rawCurrentIndex)
+        ? desiredIndex
+        : rawCurrentIndex % chars.length;
       const shift = computeShift(currentIndex, desiredIndex, chars.length, loop, pad);
 
+      // Stop any in-flight animation and snap the scrubber to the current
+      // segment so that the next distance calculation is exact.
+      if (activeScrubRef.current) {
+        activeScrubRef.current.kill();
+        activeScrubRef.current = null;
+      }
+      normalizeToIndex(currentIndex);
+
       if (shift === 0) {
-        // Already at target; ensure faces are set correctly.
-        setFaceText(chars[(desiredIndex + 1) % chars.length], chars[desiredIndex]);
         onEnd?.();
         return;
       }
@@ -116,43 +147,33 @@ export function FlipSlot({
         window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
 
       if (prefersReducedMotion) {
-        scrubber.kill();
-        timeline.totalTime(desiredIndex * SEGMENT_DURATION);
-        setFaceText(chars[(desiredIndex + 1) % chars.length], chars[desiredIndex]);
-        scrubberRef.current = buildScrubber(timeline);
+        normalizeToIndex(desiredIndex);
         onEnd?.();
         return;
-      }
-
-      if (animatingRef.current) {
-        // Interrupt any in-flight scrub animation and continue from here.
-        scrubberRef.current?.kill();
-        scrubberRef.current = buildScrubber(timeline);
       }
 
       animatingRef.current = true;
       onStart?.();
 
-      const newScrubber = gsap.to(scrubberRef.current, {
+      activeScrubRef.current = gsap.to(scrubber, {
         totalTime: `+=${shift}`,
         ease,
         duration: Math.max(0.1, shift * duration),
         onComplete: () => {
           animatingRef.current = false;
+          normalizeToIndex(desiredIndex);
           onEnd?.();
         },
       });
-
-      scrubberRef.current = newScrubber;
     },
-    [buildScrubber, duration, ease, loop, onEnd, onStart, pad, setFaceText]
+    [duration, ease, loop, normalizeToIndex, onEnd, onStart, pad]
   );
 
   // Initialize timeline and scrubber when the character set changes.
   useEffect(() => {
     if (!isBrowser()) return;
 
-    charsRef.current = Array.from(charactersProp);
+    charsRef.current = padCharacters(charactersProp);
     const timeline = buildTimeline();
     if (!timeline) return;
 
@@ -160,17 +181,23 @@ export function FlipSlot({
 
     const initialChar = normalizeCharacter(valueRef.current);
     const initialIndex = characterIndex(initialChar, charsRef.current);
-    timeline.totalTime(initialIndex * SEGMENT_DURATION);
+    const scrubber = buildScrubber(timeline);
+    if (scrubber) {
+      scrubberRef.current = scrubber;
+    }
+
+    const initialTime = initialIndex * SEGMENT_DURATION + EPS;
+    scrubber?.totalTime(initialTime);
+    timeline.totalTime(initialTime);
     setFaceText(
       charsRef.current[(initialIndex + 1) % charsRef.current.length],
       charsRef.current[initialIndex]
     );
 
-    scrubberRef.current = buildScrubber(timeline);
-
     return () => {
       timeline.kill();
       scrubberRef.current?.kill();
+      activeScrubRef.current?.kill();
     };
   }, [buildScrubber, buildTimeline, charactersProp, setFaceText]);
 
@@ -178,7 +205,7 @@ export function FlipSlot({
   useEffect(() => {
     if (!timelineRef.current) return;
     const nextChar = normalizeCharacter(value);
-    charsRef.current = Array.from(charactersProp);
+    charsRef.current = padCharacters(charactersProp);
     flipTo(nextChar);
   }, [charactersProp, flipTo, value]);
 

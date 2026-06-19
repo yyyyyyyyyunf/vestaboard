@@ -17,7 +17,7 @@
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-weight: 700;
   text-align: center;
-  perspective: 600px;
+  perspective: 2em;
   border-radius: var(--vesta-radius);
   background-color: var(--vesta-bg);
   color: var(--vesta-color);
@@ -48,9 +48,7 @@
 
 .face {
   position: absolute;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -61,52 +59,25 @@
   transform-style: preserve-3d;
 }
 
+/* Top-half faces reveal the upper portion of a character. */
 .unfoldTop,
-.unfoldBottom {
-  filter: brightness(calc(1 / 90 * clamp(0, var(--flipped), 90)));
-}
-
-.foldTop,
-.foldBottom {
-  filter: brightness(calc(1 - (1 / 90 * clamp(0, var(--flipped) - 90, 90))));
-}
-
-.unfoldTop {
-  top: 0;
-  clip-path: polygon(
-    0 0,
-    100% 0,
-    100% 40%,
-    calc(90% + 0.025em) 40%,
-    calc(90% + 0.025em) 48%,
-    calc(10% - 0.025em) 48%,
-    calc(10% - 0.025em) 40%,
-    0 40%
-  );
-  z-index: 1;
-  border-radius: var(--vesta-radius) var(--vesta-radius) 0 0;
-}
-
-.unfoldBottom {
-  top: 0;
-  clip-path: polygon(
-    0 0,
-    100% 0,
-    100% 40%,
-    calc(90% + 0.025em) 40%,
-    calc(90% + 0.025em) 48%,
-    calc(10% - 0.025em) 48%,
-    calc(10% - 0.025em) 40%,
-    0 40%
-  );
-  z-index: 2;
-  transform-origin: center 50%;
-  rotate: x calc(-180deg + (var(--flipped) * -1deg));
-  border-radius: var(--vesta-radius) var(--vesta-radius) 0 0;
-}
-
 .foldTop {
-  top: 0;
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% 40%,
+    calc(90% + 0.025em) 40%,
+    calc(90% + 0.025em) 48%,
+    calc(10% - 0.025em) 48%,
+    calc(10% - 0.025em) 40%,
+    0 40%
+  );
+  border-radius: var(--vesta-radius) var(--vesta-radius) 0 0;
+}
+
+/* Bottom-half faces reveal the lower portion of a character. */
+.unfoldBottom,
+.foldBottom {
   clip-path: polygon(
     0 60%,
     calc(10% - 0.025em) 60%,
@@ -117,24 +88,31 @@
     100% 100%,
     0 100%
   );
+  border-radius: 0 0 var(--vesta-radius) var(--vesta-radius);
+}
+
+/* The top-half "next" face fades in as the flip progresses. */
+.unfoldTop {
+  z-index: 1;
+  filter: brightness(calc(var(--flipped) / 180));
+}
+
+/* The bottom-half "next" face rotates in from below. */
+.unfoldBottom {
+  z-index: 2;
+  transform-origin: center 50%;
+  rotate: x calc(180deg - (var(--flipped) * 1deg));
+}
+
+/* The top-half "current" face rotates away to reveal the next character. */
+.foldTop {
   z-index: 3;
   transform-origin: center 50%;
   rotate: x calc(var(--flipped) * -1deg);
-  border-radius: 0 0 var(--vesta-radius) var(--vesta-radius);
 }
 
+/* The bottom-half "current" face fades out as the flip progresses. */
 .foldBottom {
-  top: 0;
-  clip-path: polygon(
-    0 60%,
-    calc(10% - 0.025em) 60%,
-    calc(10% - 0.025em) 52%,
-    calc(90% + 0.025em) 52%,
-    calc(90% + 0.025em) 60%,
-    100% 60%,
-    100% 100%,
-    0 100%
-  );
   z-index: 1;
-  border-radius: 0 0 var(--vesta-radius) var(--vesta-radius);
+  filter: brightness(calc(1 - (var(--flipped) / 180)));
 }
