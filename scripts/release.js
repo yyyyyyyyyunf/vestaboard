@@ -71,11 +71,12 @@ try {
   const remoteExists = runSilent('git ls-remote --heads origin release').length > 0;
   if (remoteExists) {
     runSilent('git fetch origin release');
-    const local = runSilent('git rev-parse release');
-    const remote = runSilent('git rev-parse origin/release');
-    if (local !== remote) {
+    const localAhead = runSilent(
+      'git merge-base --is-ancestor origin/release release && echo true || echo false'
+    );
+    if (localAhead !== 'true') {
       console.error(
-        '❌ Local "release" branch is out of sync with origin/release. Please pull the latest changes.'
+        '❌ Local "release" branch is behind origin/release. Please pull the latest changes.'
       );
       process.exit(1);
     }
