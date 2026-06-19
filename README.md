@@ -52,3 +52,30 @@ pnpm lint     # oxlint
 pnpm format   # prettier
 pnpm build    # build library
 ```
+
+## Release
+
+Releases are automated through GitHub Actions. To publish a new version:
+
+1. Ensure your changes are on the `develop` branch and merged into `release`.
+2. Check out the `release` branch locally:
+   ```bash
+   git checkout release
+   git pull origin release
+   ```
+3. Run the release script:
+   ```bash
+   pnpm release patch        # 0.1.0 -> 0.1.1
+   pnpm release minor        # 0.1.0 -> 0.2.0
+   pnpm release major        # 0.1.0 -> 1.0.0
+   pnpm release 0.2.0        # explicit version
+   pnpm release 0.2.0-beta.0 # prerelease version
+   ```
+4. The script updates `package.json`, generates `CHANGELOG.md`, creates a `v*` tag, and pushes everything to `origin/release`.
+5. GitHub Actions takes over: it runs CI checks, publishes to npm with provenance, creates a GitHub Release, and merges `release` back into `main`.
+
+Preview the release without making changes:
+
+```bash
+pnpm release:dry patch
+```
