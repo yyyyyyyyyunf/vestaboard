@@ -116,9 +116,9 @@ jobs:
         run: |
           TAG="${{ steps.dist-tag.outputs.tag }}"
           if [ "$TAG" = "latest" ]; then
-            pnpm publish --access public --provenance
+            pnpm publish --access public --provenance --no-git-checks
           else
-            pnpm publish --access public --provenance --tag "$TAG"
+            pnpm publish --access public --provenance --tag "$TAG" --no-git-checks
           fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
