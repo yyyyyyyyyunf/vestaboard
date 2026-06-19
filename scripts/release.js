@@ -125,7 +125,7 @@ try {
 // Read the new version and create the commit/tag.
 let version;
 try {
-  version = runSilent("node -p \"require('./package.json').version\"");
+  version = runSilent('node -p "require(\'./package.json\').version"');
 } catch (error) {
   console.error('\n❌ Failed to read version from package.json.');
   process.exit(error.status || 1);
