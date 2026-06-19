@@ -91,6 +91,9 @@ try {
 const catvArgs = ['commit-and-tag-version', '--release-as', bump];
 if (isDryRun) {
   catvArgs.push('--dry-run');
+} else {
+  // We commit and tag ourselves so we can format the generated files first.
+  catvArgs.push('--skip.commit', '--skip.tag');
 }
 
 const catvCmd = `pnpm exec ${catvArgs.join(' ')}`;
@@ -107,6 +110,37 @@ try {
 if (isDryRun) {
   console.log('\n✅ Dry-run completed. No changes were made.');
   process.exit(0);
+}
+
+// Format generated files before committing.
+console.log('\n🎨 Formatting generated files...\n');
+try {
+  run('pnpm exec prettier --write package.json CHANGELOG.md');
+} catch (error) {
+  console.error('\n❌ Failed to format generated files.');
+  process.exit(error.status || 1);
+}
+
+// Read the new version and create the commit/tag.
+let version;
+try {
+  version = runSilent("node -p \"require('./package.json').version\"");
+} catch (error) {
+  console.error('\n❌ Failed to read version from package.json.');
+  process.exit(error.status || 1);
+}
+
+const tag = `v${version}`;
+const message = `chore(release): ${version}`;
+
+console.log(`\n📝 Committing release ${version}...\n`);
+try {
+  run('git add package.json CHANGELOG.md');
+  run(`git commit -m "${message}"`);
+  run(`git tag -a "${tag}" -m "${message}"`);
+} catch (error) {
+  console.error('\n❌ Failed to commit or tag release.');
+  process.exit(error.status || 1);
 }
 
 // Push the release commit and the new tag.
